@@ -1,0 +1,69 @@
+{
+  "opportunity": "EXAMPLE_RFP",
+  "description": "Configure which sections to generate for this proposal",
+  "sections": [
+    {
+      "id": "executive_summary",
+      "title": "Executive Summary",
+      "required": true
+    },
+    {
+      "id": "technical",
+      "title": "Technical Approach",
+      "required": true
+    },
+    {
+      "id": "management",
+      "title": "Management Plan",
+      "required": true
+    },
+    {
+      "id": "past_performance",
+      "title": "Past Performance",
+      "required": true
+    },
+    {
+      "id": "staffing",
+      "title": "Staffing Plan",
+      "required": false,
+      "description": "Include if RFP requires detailed staffing information"
+    },
+    {
+      "id": "quality_assurance",
+      "title": "Quality Assurance",
+      "required": false,
+      "description": "Include for contracts requiring QA/QC processes"
+    },
+    {
+      "id": "security",
+      "title": "Security and Compliance",
+      "required": false,
+      "description": "Include for contracts with security requirements (FedRAMP, FISMA, etc.)"
+    },
+    {
+      "id": "transition",
+      "title": "Transition Plan",
+      "required": false,
+      "description": "Include for incumbent takeover or migration projects"
+    },
+    {
+      "id": "cost",
+      "title": "Cost Proposal",
+      "required": false,
+      "description": "Include if cost proposal is part of technical volume (rare)"
+    }
+  ],
+  "notes": [
+    "To use this config:",
+    "1. Copy this file to: Federal_Contracting/01_Active_Pursuits/{OPPORTUNITY_NAME}/section_config.json",
+    "2. Edit the 'opportunity' field to match your opportunity folder name",
+    "3. Set 'required': true for sections you want to include",
+    "4. The auto-service will use these sections when generating the proposal",
+    "",
+    "If no config file exists, the system defaults to 4 standard sections:",
+    "- Executive Summary",
+    "- Technical Approach", 
+    "- Management Plan",
+    "- Past Performance"
+  ]
+}
