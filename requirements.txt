@@ -1,3 +1,4 @@
+# Core
 openai>=1.0
 chromadb>=0.4
 pypdf>=3.0
@@ -6,3 +7,11 @@ openpyxl>=3.1
 tqdm>=4.60
 watchdog>=3.0
 colorama>=0.4
+pydantic>=2.0
+
+# API Server
+fastapi>=0.100
+uvicorn[standard]>=0.20
+
+# Optional
+python-dotenv>=1.0

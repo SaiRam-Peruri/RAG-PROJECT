@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  rag-api:
+    build: .
+    ports:
+      - "${RAG_API_PORT:-8000}:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - RAG_API_KEY=${RAG_API_KEY:-}
+      - RAG_LOG_LEVEL=${RAG_LOG_LEVEL:-INFO}
+      - RAG_LLM_MODEL=${RAG_LLM_MODEL:-gpt-4.1-mini}
+      - RAG_RATE_LIMIT_RPM=${RAG_RATE_LIMIT_RPM:-60}
+      - COMPANY_NAME=${COMPANY_NAME:-Your Company}
+      - COMPANY_ADDRESS=${COMPANY_ADDRESS:-}
+      - COMPANY_PHONE=${COMPANY_PHONE:-}
+      - COMPANY_EMAIL=${COMPANY_EMAIL:-}
+      - COMPANY_WEBSITE=${COMPANY_WEBSITE:-}
+    volumes:
+      - ./Federal_Contracting:/app/Federal_Contracting
+      - ./chroma_db:/app/chroma_db
+    restart: unless-stopped
