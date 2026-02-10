@@ -204,8 +204,9 @@ class ProposalPipeline:
         
         try:
             import subprocess
+            import sys as _sys
             result = subprocess.run(
-                ['python', 'rag_ingest.py'],
+                [_sys.executable, 'rag_ingest.py'],
                 cwd=self.workspace_path,
                 capture_output=True,
                 text=True,

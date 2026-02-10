@@ -12,7 +12,7 @@ from docx import Document
 import openpyxl
 
 
-ROOT = Path(r"C:\Users\ACER\RAG-Project\Federal_Contracting")
+ROOT = Path(os.getenv("RAG_FED_DIR", Path(__file__).parent / "Federal_Contracting"))
 
 # ---- Exclusion rules (hard boundaries) ----
 DENY_PATH_RX = [
@@ -248,10 +248,21 @@ def choose_collection(meta: Dict) -> str:
 
 
 def main():
-    if not os.getenv("OPENAI_API_KEY"):
-        raise SystemExit("OPENAI_API_KEY not set. In PowerShell: $env:OPENAI_API_KEY='...'\n")
+    import argparse
+    parser = argparse.ArgumentParser(description="Ingest Federal Contracting documents into ChromaDB")
+    parser.add_argument("--root", type=str, default=None, help="Override Federal_Contracting directory")
+    parser.add_argument("--db", type=str, default=str(Path("chroma_db").resolve()), help="ChromaDB path")
+    parser.add_argument("--clean", action="store_true", help="Delete existing collections before ingesting")
+    args = parser.parse_args()
 
-    client = chromadb.PersistentClient(path=str(Path("chroma_db").resolve()))
+    global ROOT
+    if args.root:
+        ROOT = Path(args.root)
+
+    if not os.getenv("OPENAI_API_KEY"):
+        raise SystemExit("OPENAI_API_KEY not set. Set: export OPENAI_API_KEY='...'\n")
+
+    client = chromadb.PersistentClient(path=args.db)
 
     embedder = embedding_functions.OpenAIEmbeddingFunction(
         api_key=os.environ["OPENAI_API_KEY"],

@@ -342,9 +342,9 @@ def main():
     try:
         past_docs, past_metas = query_past_wins(coll_draft, section_type)
         print(f"  Found {len(past_docs)} past practice chunks")
-    except:
+    except Exception as e:
         past_docs, past_metas = [], []
-        print("  No internal content available")
+        print(f"  No internal content available ({e})")
     
     # Step 5: Build context
     print("→ Building context...")
