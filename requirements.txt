@@ -8,6 +8,7 @@ tqdm>=4.60
 watchdog>=3.0
 colorama>=0.4
 pydantic>=2.0
+requests>=2.31
 
 # API Server
 fastapi>=0.100

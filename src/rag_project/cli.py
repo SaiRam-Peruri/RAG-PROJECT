@@ -139,6 +139,28 @@ def cmd_compliance(args):
     print(f"\n✅ Done: {result['requirements']} requirements → {result['output_file']}")
 
 
+def cmd_sam_sync(args):
+    """Fetch SAM.gov opportunities and download attachments."""
+    from .config import settings
+    from .logging_config import setup_logging
+    setup_logging(settings.log_level)
+    from .services.sam_pipeline import run_pipeline
+
+    naics = args.naics if args.naics else settings.target_naics
+    print(f"\nFetching SAM.gov {args.mode} opportunities (NAICS={naics or 'ALL'})...")
+    result = run_pipeline(
+        mode=args.mode,
+        days_back=args.days,
+        naics=naics,
+        limit=args.limit,
+        run_ingest=args.ingest,
+    )
+    print(f"\nProcessed {result['count']} opportunities")
+    for entry in result["results"][:5]:
+        status = "skipped" if entry.get("skipped") else f"downloaded {entry.get('downloaded',0)} files"
+        print(f"  - {entry['notice_id']}: {entry['title']} ({status})")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="rag_project",
@@ -175,6 +197,14 @@ def main():
     sp = subparsers.add_parser("compliance", help="Generate compliance matrix")
     sp.add_argument("--opportunity", "-o", type=str, default=None)
 
+    # sam-sync
+    sp = subparsers.add_parser("sam-sync", help="Fetch SAM.gov opportunities")
+    sp.add_argument("--mode", choices=["active", "archived"], default="active")
+    sp.add_argument("--days", type=int, default=7, help="Look back N days")
+    sp.add_argument("--limit", type=int, default=50, help="Max opportunities")
+    sp.add_argument("--naics", nargs="*", help="Override NAICS filter")
+    sp.add_argument("--ingest", action="store_true", help="Run ingest after download")
+
     args = parser.parse_args()
 
     commands = {
@@ -184,6 +214,7 @@ def main():
         "health": cmd_health,
         "generate": cmd_generate,
         "compliance": cmd_compliance,
+        "sam-sync": cmd_sam_sync,
     }
 
     if args.command in commands:

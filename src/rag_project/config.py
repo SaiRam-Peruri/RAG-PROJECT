@@ -1,59 +1,52 @@
 """
-Centralized configuration — single source of truth.
-All settings are env-var driven with sensible defaults.
+Centralized configuration for the RAG Proposal System.
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
 
 class Settings(BaseModel):
-    """Application settings loaded from environment variables."""
-
-    # ── Paths ──────────────────────────────────────
     project_root: Path = Field(default_factory=lambda: Path(__file__).resolve().parent.parent.parent)
     federal_contracting_dir: Optional[Path] = None
     chroma_db_path: Optional[Path] = None
 
-    # ── OpenAI ─────────────────────────────────────
-    openai_api_key: str = Field(default="")
-    embedding_model: str = Field(default="text-embedding-3-large")
-    llm_model: str = Field(default="gpt-4.1-mini")
-    llm_model_hq: str = Field(default="gpt-4.1")
+    openai_api_key: str = ""
+    embedding_model: str = "text-embedding-3-large"
+    llm_model: str = "gpt-4.1-mini"
+    llm_model_hq: str = "gpt-4.1"
 
-    # ── Retrieval ──────────────────────────────────
-    top_k: int = Field(default=12, ge=1, le=100)
-    max_context_chars: int = Field(default=14000, ge=1000)
-    chunk_max_chars: int = Field(default=3500, ge=500)
-    chunk_overlap: int = Field(default=300, ge=0)
+    top_k: int = 12
+    max_context_chars: int = 14000
+    chunk_max_chars: int = 3500
+    chunk_overlap: int = 300
 
-    # ── Collections ────────────────────────────────
     coll_auth: str = "authoritative"
     coll_draft: str = "drafting"
 
-    # ── API Server ─────────────────────────────────
-    api_host: str = Field(default="0.0.0.0")
-    api_port: int = Field(default=8000, ge=1, le=65535)
-    api_key: str = Field(default="")  # API auth key
-    rate_limit_rpm: int = Field(default=60, ge=1)  # requests per minute
-    cors_origins: str = Field(default="*")
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+    api_key: str = ""
+    rate_limit_rpm: int = 60
+    cors_origins: str = "*"
 
-    # ── Company Info (parameterized) ───────────────
-    company_name: str = Field(default="Your Company")
-    company_address: str = Field(default="123 Main St")
-    company_city_state: str = Field(default="City, State ZIP")
-    company_phone: str = Field(default="000-000-0000")
-    company_email: str = Field(default="contact@company.com")
-    company_website: str = Field(default="www.company.com")
+    company_name: str = "Your Company"
+    company_address: str = "123 Main St"
+    company_city_state: str = "City, State ZIP"
+    company_phone: str = "000-000-0000"
+    company_email: str = "contact@company.com"
+    company_website: str = "www.company.com"
 
-    # ── Logging ────────────────────────────────────
-    log_level: str = Field(default="INFO")
+    log_level: str = "INFO"
     log_file: Optional[str] = None
+
+    sam_api_key: str = ""
+    target_naics: List[str] = Field(default_factory=list)
 
     model_config = {"extra": "ignore"}
 
@@ -63,17 +56,16 @@ class Settings(BaseModel):
         if self.chroma_db_path is None:
             self.chroma_db_path = self.project_root / "chroma_db"
 
-    @field_validator("openai_api_key", mode="before")
+    @field_validator("target_naics", mode="before")
     @classmethod
-    def _validate_key(cls, v: str) -> str:
-        return v  # allow empty for healthcheck; require_api_key() enforces at runtime
+    def _split_naics(cls, v):
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(",") if item.strip()]
+        return v
 
     def require_api_key(self) -> str:
         if not self.openai_api_key:
-            raise SystemExit(
-                "OPENAI_API_KEY not set.\n"
-                "  export OPENAI_API_KEY='sk-...'"
-            )
+            raise SystemExit("OPENAI_API_KEY not set. export OPENAI_API_KEY='sk-...' ")
         return self.openai_api_key
 
     @property
@@ -92,12 +84,11 @@ class Settings(BaseModel):
 
 
 def load_settings() -> Settings:
-    """Load settings from environment variables (with .env support)."""
     try:
         from dotenv import load_dotenv
         load_dotenv()
     except ImportError:
-        pass  # python-dotenv optional
+        pass
 
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
@@ -121,8 +112,9 @@ def load_settings() -> Settings:
         log_file=os.getenv("RAG_LOG_FILE"),
         federal_contracting_dir=Path(p) if (p := os.getenv("RAG_FED_DIR")) else None,
         chroma_db_path=Path(p) if (p := os.getenv("RAG_CHROMA_PATH")) else None,
+        sam_api_key=os.getenv("SAM_API_KEY", ""),
+        target_naics=os.getenv("TARGET_NAICS", ""),
     )
 
 
-# Singleton
 settings = load_settings()

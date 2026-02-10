@@ -36,11 +36,12 @@ cp .env.example .env
 python -m rag_project serve
 
 # Or use individual commands
-python -m rag_project ingest       # Index documents
-python -m rag_project query        # Ask questions
-python -m rag_project generate     # Generate sections
-python -m rag_project compliance   # Compliance matrix
-python -m rag_project health       # System check
+python -m rag_project ingest         # Index documents
+python -m rag_project query          # Ask questions
+python -m rag_project generate       # Generate sections
+python -m rag_project compliance     # Compliance matrix
+python -m rag_project sam-sync       # SAM.gov pipeline
+python -m rag_project health         # System check
 ```
 
 ### 4. Docker
@@ -48,6 +49,21 @@ python -m rag_project health       # System check
 ```bash
 docker-compose up -d
 ```
+
+## SAM.gov Pipeline
+
+Fetch new opportunities automatically based on NAICS codes.
+
+```bash
+python -m rag_project sam-sync --mode active --days 3 --naics 541512 541513 --ingest
+```
+
+- Downloads matching opportunities into `Federal_Contracting/01_Active_Pursuits/<NOTICE_ID>/`
+- Saves SAM metadata (`sam_metadata.json`)
+- Optional `--ingest` flag re-indexes ChromaDB after download
+- Configure defaults via `.env`:
+  - `SAM_API_KEY=...`
+  - `TARGET_NAICS=541512,541513`
 
 ## API Endpoints
 
