@@ -161,6 +161,29 @@ def cmd_sam_sync(args):
         print(f"  - {entry['notice_id']}: {entry['title']} ({status})")
 
 
+def cmd_sam_watch(args):
+    """Continuously poll SAM.gov for new opportunities."""
+    from .config import settings
+    from .logging_config import setup_logging
+    setup_logging(settings.log_level)
+    from .watchers.sam_watcher import watch
+
+    naics = args.naics if args.naics else settings.target_naics
+    print(
+        f"\nStarting SAM watcher: mode={args.mode}, interval={args.interval}min, "
+        f"NAICS={naics or 'ALL'}"
+    )
+    watch(
+        interval_minutes=args.interval,
+        mode=args.mode,
+        naics=naics,
+        days_back=args.days,
+        limit=args.limit,
+        run_ingest=not args.no_ingest,
+        max_cycles=args.cycles,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="rag_project",
@@ -205,6 +228,16 @@ def main():
     sp.add_argument("--naics", nargs="*", help="Override NAICS filter")
     sp.add_argument("--ingest", action="store_true", help="Run ingest after download")
 
+    # sam-watch
+    sp = subparsers.add_parser("sam-watch", help="Continuously poll SAM.gov")
+    sp.add_argument("--mode", choices=["active", "archived"], default="active")
+    sp.add_argument("--interval", type=int, default=60, help="Minutes between polls")
+    sp.add_argument("--days", type=int, default=7, help="Look back window per poll")
+    sp.add_argument("--limit", type=int, default=50, help="Max opportunities per poll")
+    sp.add_argument("--naics", nargs="*", help="Override NAICS codes")
+    sp.add_argument("--no-ingest", action="store_true", help="Skip ingestion after download")
+    sp.add_argument("--cycles", type=int, default=None, help="Stop after N cycles (for testing)")
+
     args = parser.parse_args()
 
     commands = {
@@ -215,6 +248,7 @@ def main():
         "generate": cmd_generate,
         "compliance": cmd_compliance,
         "sam-sync": cmd_sam_sync,
+        "sam-watch": cmd_sam_watch,
     }
 
     if args.command in commands:
