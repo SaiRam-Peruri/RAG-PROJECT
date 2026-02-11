@@ -1,4 +1,12 @@
-"""Job runner that pulls queued opportunities and runs the legacy pipeline."""
+"""
+Job runner: pulls queued opportunities and runs modern orchestrator pipeline.
+
+Handles:
+- HOLD/CANCEL detection
+- Pipeline execution (ingest → compliance → sections)
+- Automatic folder transitions (READY → COMPLETE)
+- Status tracking and error reporting
+"""
 
 from __future__ import annotations
 
@@ -31,6 +39,14 @@ def run_pending_jobs(limit: int = 1, dry_run: bool = False) -> int:
         opp_path = Path(job.path)
 
         logger.info("%s Processing job %s (%s) %s", "=" * 10, notice_id, stage, "=" * 10)
+        
+        # Check if cancelled/on hold before processing
+        from .orchestrator import check_if_cancelled
+        if check_if_cancelled(notice_id, opp_path):
+            logger.warning("⚠️  Job %s is on HOLD or cancelled - skipping", notice_id)
+            update_job_status(notice_id, stage, "cancelled")
+            continue
+        
         if dry_run:
             logger.info("[DRY RUN] Would process %s at %s", notice_id, opp_path)
             continue
@@ -81,39 +97,38 @@ def run_single_job(notice_id: str, stage: str) -> bool:
 
 
 def _run_pipeline(notice_id: str, stage: str, opp_path: Path) -> bool:
+    """
+    Execute the proposal generation pipeline using modern orchestrator.
+    
+    Args:
+        notice_id: Opportunity/notice ID
+        stage: 'rfi' or 'rfp'
+        opp_path: Path to opportunity folder
+    
+    Returns:
+        True if successful, False otherwise
+    """
     try:
-        import sys
-
-        sys.path.insert(0, str(settings.project_root))
-        from auto_proposal_service import ProposalPipeline  # type: ignore
-
-        pipeline = ProposalPipeline(settings.project_root)
-        job_type = "new_rfi" if stage == "rfi" else "new_rfp"
-        job = {
-            "type": job_type,
-            "opportunity": notice_id,
-            "folder_path": opp_path,
-        }
-
-        gov_issued = opp_path / "01_Government_Issued"
-        if gov_issued.exists():
-            for subdir in ("Final_Solicitations", "Draft_Solicitations"):
-                sol_dir = gov_issued / subdir
-                if not sol_dir.exists():
-                    continue
-                for file_path in sol_dir.iterdir():
-                    if file_path.suffix.lower() in {".pdf", ".docx", ".doc"}:
-                        job["file_path"] = file_path
-                        break
-                if "file_path" in job:
-                    break
-
-        logger.info("Starting legacy pipeline for %s (%s)", notice_id, stage)
-        pipeline.process_job(job)
-        logger.info("Legacy pipeline finished for %s", notice_id)
-        return True
+        from .orchestrator import run_opportunity_pipeline
+        
+        logger.info("[PIPELINE] Starting %s generation for %s", stage.upper(), notice_id)
+        
+        # Run the modern orchestrator
+        result = run_opportunity_pipeline(
+            notice_id=notice_id,
+            opp_path=opp_path,
+            stage=stage,
+        )
+        
+        if result["success"]:
+            logger.info("[PIPELINE] ✅ Completed successfully")
+            return True
+        else:
+            logger.error("[PIPELINE] ❌ Failed: %s", result.get("error", "Unknown error"))
+            return False
+            
     except Exception as exc:
-        logger.exception("Pipeline error for %s: %s", notice_id, exc)
+        logger.exception("[PIPELINE] Error for %s: %s", notice_id, exc)
         return False
 
 
