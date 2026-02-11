@@ -184,6 +184,22 @@ def cmd_sam_watch(args):
     )
 
 
+def cmd_opp_watch(args):
+    """Watch RFI/RFP trigger folders for automation."""
+    from .logging_config import setup_logging
+    from .watchers.opportunity_watcher import watch_triggers
+    from .config import settings
+
+    setup_logging(settings.log_level)
+    stages = args.stages
+    if stages:
+        print(f"\nWatching trigger folders for stages: {', '.join(stages)}")
+    if args.once:
+        watch_triggers(once=True, stages=stages)
+    else:
+        watch_triggers(once=False, stages=stages)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="rag_project",
@@ -238,6 +254,12 @@ def main():
     sp.add_argument("--no-ingest", action="store_true", help="Skip ingestion after download")
     sp.add_argument("--cycles", type=int, default=None, help="Stop after N cycles (for testing)")
 
+    # opp-watch
+    sp = subparsers.add_parser("opp-watch", help="Watch RFI/RFP trigger folders")
+    sp.add_argument("--once", action="store_true", help="Run single scan and exit")
+    sp.add_argument("--poll", type=int, default=5, help="Polling interval when --once is used")
+    sp.add_argument("--stages", nargs="*", choices=["rfi", "rfp"], help="Limit to specific stages")
+
     args = parser.parse_args()
 
     commands = {
@@ -249,6 +271,7 @@ def main():
         "compliance": cmd_compliance,
         "sam-sync": cmd_sam_sync,
         "sam-watch": cmd_sam_watch,
+        "opp-watch": cmd_opp_watch,
     }
 
     if args.command in commands:
