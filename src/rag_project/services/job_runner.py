@@ -17,6 +17,10 @@ from typing import Optional
 from ..config import settings
 from ..logging_config import get_logger
 from .job_manager import list_jobs, update_job_status
+from .notifications import (
+    send_review_notifications_sync,
+    send_pipeline_error_notification_sync,
+)
 
 logger = get_logger("job_runner")
 
@@ -26,7 +30,7 @@ STAGE_TRANSITIONS = {
 }
 
 
-def run_pending_jobs(limit: int = 1, dry_run: bool = False) -> int:
+def run_pending_jobs(limit: int = 1, dry_run: bool = False, enable_review: bool = True, enable_notifications: bool = True) -> int:
     jobs = list_jobs(status="pending")
     if not jobs:
         logger.info("No pending jobs")
@@ -53,14 +57,22 @@ def run_pending_jobs(limit: int = 1, dry_run: bool = False) -> int:
 
         update_job_status(notice_id, stage, "running")
         try:
-            success = _run_pipeline(notice_id, stage, opp_path)
-            if success:
+            result = _run_pipeline(notice_id, stage, opp_path, enable_review, enable_notifications)
+            
+            # Check both pipeline success and review status
+            if result["success"] and result.get("review_passed", True):
+                # Full success - move folder
                 new_path = _move_opportunity_folder(opp_path, stage)
                 if new_path:
                     logger.info("Moved folder: %s → %s", opp_path.parent.name, new_path.parent.name)
                 update_job_status(notice_id, stage, "complete")
                 completed += 1
+            elif not result.get("review_passed", True):
+                # Review failed - leave in READY folder
+                logger.warning("⚠️  Review failed for %s - leaving in %s", notice_id, opp_path.parent.name)
+                update_job_status(notice_id, stage, "review_failed")
             else:
+                # Pipeline error
                 update_job_status(notice_id, stage, "error")
         except Exception as exc:
             logger.exception("Job %s crashed: %s", notice_id, exc)
@@ -70,33 +82,40 @@ def run_pending_jobs(limit: int = 1, dry_run: bool = False) -> int:
     return completed
 
 
-def run_single_job(notice_id: str, stage: str) -> bool:
+def run_single_job(notice_id: str, stage: str, enable_review: bool = True, enable_notifications: bool = True) -> bool:
     jobs = list_jobs()
     job = next((j for j in jobs if j.notice_id == notice_id and j.stage == stage), None)
     if not job:
         logger.error("Job not found: %s (%s)", notice_id, stage)
         return False
-    if job.status not in ("pending", "error"):
+    if job.status not in ("pending", "error", "review_failed"):
         logger.warning("Job %s status is %s, skipping", notice_id, job.status)
         return False
 
     opp_path = Path(job.path)
     update_job_status(notice_id, stage, "running")
     try:
-        success = _run_pipeline(notice_id, stage, opp_path)
-        if success:
+        result = _run_pipeline(notice_id, stage, opp_path, enable_review, enable_notifications)
+        
+        # Check both pipeline success and review status
+        if result["success"] and result.get("review_passed", True):
             _move_opportunity_folder(opp_path, stage)
             update_job_status(notice_id, stage, "complete")
             return True
-        update_job_status(notice_id, stage, "error")
-        return False
+        elif not result.get("review_passed", True):
+            logger.warning("⚠️  Review failed for %s - leaving in %s", notice_id, opp_path.parent.name)
+            update_job_status(notice_id, stage, "review_failed")
+            return False
+        else:
+            update_job_status(notice_id, stage, "error")
+            return False
     except Exception as exc:
         logger.exception("Job crashed: %s (%s) - %s", notice_id, stage, exc)
         update_job_status(notice_id, stage, "error")
         return False
 
 
-def _run_pipeline(notice_id: str, stage: str, opp_path: Path) -> bool:
+def _run_pipeline(notice_id: str, stage: str, opp_path: Path, enable_review: bool = True, enable_notifications: bool = True) -> dict:
     """
     Execute the proposal generation pipeline using modern orchestrator.
     
@@ -104,9 +123,11 @@ def _run_pipeline(notice_id: str, stage: str, opp_path: Path) -> bool:
         notice_id: Opportunity/notice ID
         stage: 'rfi' or 'rfp'
         opp_path: Path to opportunity folder
+        enable_review: If True, run multi-agent review (Stage 3)
+        enable_notifications: If True, send Telegram notifications
     
     Returns:
-        True if successful, False otherwise
+        Result dict with success, review_passed, and other details
     """
     try:
         from .orchestrator import run_opportunity_pipeline
@@ -118,18 +139,81 @@ def _run_pipeline(notice_id: str, stage: str, opp_path: Path) -> bool:
             notice_id=notice_id,
             opp_path=opp_path,
             stage=stage,
+            enable_review=enable_review,
         )
         
-        if result["success"]:
-            logger.info("[PIPELINE] ✅ Completed successfully")
-            return True
+        # Send notifications based on result (if enabled)
+        if enable_notifications and settings.enable_notifications:
+            if result["success"] and result.get("review_passed", True):
+                logger.info("[PIPELINE] ✅ Completed successfully")
+                
+                # Send review notifications if review was run
+                if "review" in result.get("steps", {}):
+                    review_data = result["steps"]["review"]
+                    try:
+                        send_review_notifications_sync(
+                            review_data=review_data,
+                            opportunity_id=notice_id,
+                            stage=stage,
+                        )
+                        logger.info("📬 Review notifications sent")
+                    except Exception as exc:
+                        logger.exception("Failed to send review notifications: %s", exc)
+            
+            elif not result.get("review_passed", True):
+                logger.warning("[PIPELINE] ⚠️  Review failed")
+                
+                # Send review failure notifications
+                if "review" in result.get("steps", {}):
+                    review_data = result["steps"]["review"]
+                    try:
+                        send_review_notifications_sync(
+                            review_data=review_data,
+                            opportunity_id=notice_id,
+                            stage=stage,
+                        )
+                        logger.info("📬 Review failure notifications sent")
+                    except Exception as exc:
+                        logger.exception("Failed to send review notifications: %s", exc)
+            
+            else:
+                error_msg = result.get("error", "Unknown error")
+                logger.error("[PIPELINE] ❌ Failed: %s", error_msg)
+                
+                # Send error notification
+                try:
+                    send_pipeline_error_notification_sync(
+                        opportunity_id=notice_id,
+                        error_message=error_msg,
+                        stage=stage,
+                    )
+                    logger.info("📬 Error notification sent")
+                except Exception as exc:
+                    logger.exception("Failed to send error notification: %s", exc)
         else:
-            logger.error("[PIPELINE] ❌ Failed: %s", result.get("error", "Unknown error"))
-            return False
+            # Just log without notifications
+            if result["success"]:
+                logger.info("[PIPELINE] ✅ Completed successfully")
+            else:
+                logger.error("[PIPELINE] ❌ Failed: %s", result.get("error", "Unknown error"))
+        
+        return result
             
     except Exception as exc:
         logger.exception("[PIPELINE] Error for %s: %s", notice_id, exc)
-        return False
+        
+        # Send error notification for exception
+        if enable_notifications and settings.enable_notifications:
+            try:
+                send_pipeline_error_notification_sync(
+                    opportunity_id=notice_id,
+                    error_message=str(exc),
+                    stage=stage,
+                )
+            except Exception as notification_exc:
+                logger.exception("Failed to send error notification: %s", notification_exc)
+        
+        return {"success": False, "error": str(exc), "review_passed": False}
 
 
 def _move_opportunity_folder(current_path: Path, stage: str) -> Optional[Path]:

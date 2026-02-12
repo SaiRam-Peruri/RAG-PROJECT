@@ -188,14 +188,28 @@ def cmd_job_run(args):
 
     setup_logging(settings.log_level)
 
+    # Parse CLI flags
+    enable_review = not args.no_review
+    enable_notifications = not args.no_notify
+
     if args.notice_id:
         stage = args.stage or "rfp"
         print(f"\nRunning job: {args.notice_id} ({stage})")
-        success = run_single_job(args.notice_id, stage)
+        success = run_single_job(
+            args.notice_id,
+            stage,
+            enable_review=enable_review,
+            enable_notifications=enable_notifications,
+        )
         print("✅ Success" if success else "❌ Failed")
     else:
         print(f"\nProcessing up to {args.limit} pending job(s)...")
-        completed = run_pending_jobs(limit=args.limit, dry_run=args.dry_run)
+        completed = run_pending_jobs(
+            limit=args.limit,
+            dry_run=args.dry_run,
+            enable_review=enable_review,
+            enable_notifications=enable_notifications,
+        )
         print(f"✅ Completed {completed} job(s)")
 
 
@@ -235,6 +249,11 @@ def cmd_job_daemon(args):
     from .services.job_runner import run_pending_jobs
 
     setup_logging(settings.log_level)
+    
+    # Parse CLI flags
+    enable_review = not args.no_review
+    enable_notifications = not args.no_notify
+    
     print(f"\nStarting job daemon (interval={args.interval}s, limit={args.limit} jobs/cycle)")
     print("Press Ctrl+C to stop ✋")
 
@@ -243,7 +262,11 @@ def cmd_job_daemon(args):
         while True:
             cycle += 1
             print(f"\n{'='*70}\nDaemon cycle {cycle}\n{'='*70}")
-            completed = run_pending_jobs(limit=args.limit)
+            completed = run_pending_jobs(
+                limit=args.limit,
+                enable_review=enable_review,
+                enable_notifications=enable_notifications,
+            )
             if completed == 0:
                 print(f"No jobs processed. Sleeping {args.interval}s...")
             else:
@@ -312,6 +335,8 @@ def main():
     sp.add_argument("--notice-id", type=str, help="Run specific job by notice ID")
     sp.add_argument("--stage", choices=["rfi", "rfp"], help="Stage for specific job")
     sp.add_argument("--dry-run", action="store_true", help="Show what would run without executing")
+    sp.add_argument("--no-review", action="store_true", help="Skip multi-agent review (Stage 3)")
+    sp.add_argument("--no-notify", action="store_true", help="Disable Telegram notifications")
 
     sp = subparsers.add_parser("job-list", help="List jobs in queue")
     sp.add_argument("--status", choices=["pending", "running", "complete", "error", "cancelled"], help="Filter by status")
@@ -324,6 +349,8 @@ def main():
     sp.add_argument("--interval", type=int, default=30, help="Seconds between queue checks")
     sp.add_argument("--limit", type=int, default=1, help="Max jobs per cycle")
     sp.add_argument("--cycles", type=int, help="Stop after N cycles (for testing)")
+    sp.add_argument("--no-review", action="store_true", help="Skip multi-agent review (Stage 3)")
+    sp.add_argument("--no-notify", action="store_true", help="Disable Telegram notifications")
 
     args = parser.parse_args()
 

@@ -51,6 +51,15 @@ class Settings(BaseModel):
     review_threshold_narrative: float = 0.6
     review_threshold_risk: float = 0.8
 
+    # Telegram notification settings
+    telegram_chat_id: str = "-1003626628455"  # Work discussion channel
+    telegram_bot_compliance: str = ""  # ComplianceBot token
+    telegram_bot_tech: str = ""  # TechArchitectBot token
+    telegram_bot_narrative: str = ""  # NarrativeWriterBot token
+    telegram_bot_risk: str = ""  # RiskAssessorBot token
+    telegram_bot_policy: str = ""  # PolicyAnalystBot token
+    enable_notifications: bool = True
+
     model_config = {"extra": "ignore"}
 
     def model_post_init(self, __context) -> None:
@@ -122,6 +131,13 @@ def load_settings() -> Settings:
         review_threshold_technical=float(os.getenv("REVIEW_THRESHOLD_TECHNICAL", "0.75")),
         review_threshold_narrative=float(os.getenv("REVIEW_THRESHOLD_NARRATIVE", "0.6")),
         review_threshold_risk=float(os.getenv("REVIEW_THRESHOLD_RISK", "0.8")),
+        telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID", "-1003626628455"),
+        telegram_bot_compliance=os.getenv("TELEGRAM_BOT_COMPLIANCE", ""),
+        telegram_bot_tech=os.getenv("TELEGRAM_BOT_TECH", ""),
+        telegram_bot_narrative=os.getenv("TELEGRAM_BOT_NARRATIVE", ""),
+        telegram_bot_risk=os.getenv("TELEGRAM_BOT_RISK", ""),
+        telegram_bot_policy=os.getenv("TELEGRAM_BOT_POLICY", ""),
+        enable_notifications=os.getenv("ENABLE_NOTIFICATIONS", "true").lower() == "true",
     )
 
 
