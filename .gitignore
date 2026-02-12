@@ -16,12 +16,16 @@ ENV/
 .venv/
 .env/
 
-# Database
-chroma_db/
-*.db
-*.sqlite3
+# ============================================================================
+# DEPLOYMENT: IMPORTANT - These files ARE tracked for free hosting:
+# ============================================================================
+# ✅ chroma_db/        - ChromaDB database (NEEDED for Render/Fly.io)
+# ✅ requirements.txt  - Python dependencies
+# ✅ rag_api_simple.py - API server code
+# ✅ Federal_Contracting/ - Source documents for RAG
+# ============================================================================
 
-# Environment Variables
+# Environment Variables (NEVER COMMIT!)
 .env
 .env.local
 
@@ -54,17 +58,40 @@ htmlcov/
 # Documentation
 docs/_build/
 
+# API Keys and Secrets (NEVER COMMIT THESE!)
+.env
+*.pem
+*.key
+*secret*
+credentials.json
+config.json
+
+# AWS Deployment Files (generated locally)
+layers/*.zip
+deployment/*.zip
+automation-layer*.zip
+
+# Generated Documents (Lambda output - don't commit)
+draftrfi/
+draftrfp/
+drafts/
+
+# Keep source PDFs/DOCX in Federal_Contracting (needed for RAG)
+# These are important reference documents - DO commit them
+# *.pdf and *.docx in Federal_Contracting/ should be tracked
+
+# Render.com / Deployment
+.render/
+render.yaml
+
+# ngrok
+ngrok.yml
+
 # Temporary files
 *.tmp
 temp/
 tmp/
 
-# API Keys and Secrets
-*secret*
-*key*.json
-credentials.json
-
-# Large files (adjust as needed)
-*.pdf
-*.docx
-*.xlsx
+# Local test files
+test_*.py
+scratch/
