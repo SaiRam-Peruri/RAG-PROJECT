@@ -68,6 +68,8 @@ config.json
 
 # AWS Deployment Files (generated locally)
 layers/*.zip
+layers/python
+
 deployment/*.zip
 automation-layer*.zip
 
