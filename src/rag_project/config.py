@@ -1,6 +1,4 @@
-"""
-Centralized configuration for the RAG Proposal System.
-"""
+"""Centralized configuration for the RAG Proposal System."""
 
 from __future__ import annotations
 
@@ -48,7 +46,6 @@ class Settings(BaseModel):
     sam_api_key: str = ""
     target_naics: List[str] = Field(default_factory=list)
 
-    # Review agent thresholds (0-1 scale)
     review_threshold_policy: float = 0.7
     review_threshold_technical: float = 0.75
     review_threshold_narrative: float = 0.6
@@ -64,10 +61,10 @@ class Settings(BaseModel):
 
     @field_validator("target_naics", mode="before")
     @classmethod
-    def _split_naics(cls, v):
-        if isinstance(v, str):
-            return [item.strip() for item in v.split(",") if item.strip()]
-        return v
+    def _split_naics(cls, value):
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
 
     def require_api_key(self) -> str:
         if not self.openai_api_key:
@@ -90,8 +87,9 @@ class Settings(BaseModel):
 
 
 def load_settings() -> Settings:
-    try:
+    try:  # pragma: no cover
         from dotenv import load_dotenv
+
         load_dotenv()
     except ImportError:
         pass
