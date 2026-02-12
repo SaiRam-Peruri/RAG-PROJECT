@@ -48,6 +48,12 @@ class Settings(BaseModel):
     sam_api_key: str = ""
     target_naics: List[str] = Field(default_factory=list)
 
+    # Review agent thresholds (0-1 scale)
+    review_threshold_policy: float = 0.7
+    review_threshold_technical: float = 0.75
+    review_threshold_narrative: float = 0.6
+    review_threshold_risk: float = 0.8
+
     model_config = {"extra": "ignore"}
 
     def model_post_init(self, __context) -> None:
@@ -114,6 +120,10 @@ def load_settings() -> Settings:
         chroma_db_path=Path(p) if (p := os.getenv("RAG_CHROMA_PATH")) else None,
         sam_api_key=os.getenv("SAM_API_KEY", ""),
         target_naics=os.getenv("TARGET_NAICS", ""),
+        review_threshold_policy=float(os.getenv("REVIEW_THRESHOLD_POLICY", "0.7")),
+        review_threshold_technical=float(os.getenv("REVIEW_THRESHOLD_TECHNICAL", "0.75")),
+        review_threshold_narrative=float(os.getenv("REVIEW_THRESHOLD_NARRATIVE", "0.6")),
+        review_threshold_risk=float(os.getenv("REVIEW_THRESHOLD_RISK", "0.8")),
     )
 
 

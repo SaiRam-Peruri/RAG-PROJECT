@@ -13,6 +13,14 @@ from ..logging_config import get_logger
 from .ingestion import ingest
 from .compliance import generate_compliance_matrix
 from .generation import generate_section
+from .review_agents import (
+    ComplianceBot,
+    TechArchitectBot,
+    NarrativeWriterBot,
+    RiskAssessorBot,
+    PolicyAnalystBot,
+    ReviewResult,
+)
 
 logger = get_logger("orchestrator")
 
@@ -94,6 +102,115 @@ def fetch_live_tech_intel(query: str, context: str = "") -> Optional[str]:
     return None
 
 
+def run_review_loop(
+    sections: Dict[str, str],
+    context: Dict,
+    thresholds: Optional[Dict[str, float]] = None,
+) -> Dict:
+    """
+    Execute multi-agent review of generated proposal sections.
+    
+    Args:
+        sections: Dict mapping section names to generated content
+        context: Metadata (opportunity_id, stage, etc.)
+        thresholds: Optional dict of agent name -> score threshold
+    
+    Returns:
+        Aggregated review results with pass/fail per agent
+    """
+    logger.info("="*70)
+    logger.info("Starting multi-agent review...")
+    logger.info("="*70)
+    
+    # Default thresholds from config
+    if thresholds is None:
+        thresholds = {
+            "compliance": getattr(settings, "review_threshold_policy", 0.7),
+            "tech": getattr(settings, "review_threshold_technical", 0.75),
+            "narrative": getattr(settings, "review_threshold_narrative", 0.6),
+            "risk": getattr(settings, "review_threshold_risk", 0.8),
+            "policy": getattr(settings, "review_threshold_policy", 0.7),
+        }
+    
+    # Instantiate all review bots
+    agents = {
+        "compliance": ComplianceBot(threshold=thresholds["compliance"]),
+        "tech": TechArchitectBot(threshold=thresholds["tech"]),
+        "narrative": NarrativeWriterBot(threshold=thresholds["narrative"]),
+        "risk": RiskAssessorBot(threshold=thresholds["risk"]),
+        "policy": PolicyAnalystBot(threshold=thresholds["policy"]),
+    }
+    
+    # Run each agent evaluation
+    results = []
+    scores = {}
+    failed_agents = []
+    
+    for agent_name, agent in agents.items():
+        logger.info("Running %s...", agent.__class__.__name__)
+        try:
+            result = agent.evaluate(sections, context)
+            results.append(result)
+            scores[agent_name] = result.score
+            
+            if not result.passed:
+                failed_agents.append(agent_name)
+            
+            # Log summary
+            logger.info(
+                "  %s: score=%.2f, passed=%s, issues=%d, recommendations=%d",
+                agent_name,
+                result.score,
+                result.passed,
+                len(result.issues),
+                len(result.recommendations)
+            )
+            
+        except Exception as e:
+            logger.exception("Agent %s failed: %s", agent_name, e)
+            # Create failed result
+            failed_result = ReviewResult(
+                agent=agent.__class__.__name__,
+                score=0.0,
+                passed=False,
+                issues=[f"Agent execution failed: {str(e)}"],
+                recommendations=[]
+            )
+            results.append(failed_result)
+            scores[agent_name] = 0.0
+            failed_agents.append(agent_name)
+    
+    # Aggregate results
+    overall_passed = len(failed_agents) == 0
+    
+    review_data = {
+        "results": [
+            {
+                "agent": r.agent,
+                "score": r.score,
+                "passed": r.passed,
+                "issues": r.issues,
+                "recommendations": r.recommendations,
+            }
+            for r in results
+        ],
+        "passed": overall_passed,
+        "scores": scores,
+        "failed_agents": failed_agents,
+        "thresholds": thresholds,
+    }
+    
+    logger.info("="*70)
+    if overall_passed:
+        logger.info("✅ Review PASSED - All agents approved")
+    else:
+        logger.warning("❌ Review FAILED - Failed agents: %s", ", ".join(failed_agents))
+    logger.info("Scores: %s", scores)
+    logger.info("="*70)
+    
+    return review_data
+
+
 def run_opportunity_pipeline(
     notice_id: str,
     opp_path: Path,
@@ -101,6 +218,7 @@ def run_opportunity_pipeline(
     sections: Optional[List[str]] = None,
     use_template: bool = True,
     enable_tech_intel: bool = False,
+    enable_review: bool = True,
 ) -> Dict:
     """
     Execute the complete proposal generation pipeline.
@@ -112,6 +230,7 @@ def run_opportunity_pipeline(
         sections: Custom section list (overrides stage defaults)
         use_template: If True, check for government templates
         enable_tech_intel: If True, fetch live technical intelligence
+        enable_review: If True, run multi-agent review after generation
     
     Returns:
         Result dict with success status and details
@@ -127,6 +246,7 @@ def run_opportunity_pipeline(
         "stage": stage,
         "steps": {},
         "template_detected": False,
+        "review_passed": True,  # Default true if review disabled
     }
     
     try:
@@ -235,13 +355,52 @@ def run_opportunity_pipeline(
             "failed": failed_sections,
         }
         
+        # Step 4: Multi-agent review (if enabled)
+        if enable_review and len(generated_sections) > 0:
+            logger.info("[STEP 4/4] Running multi-agent review...")
+            try:
+                # Build sections dict for review (need actual content)
+                # For now, pass section metadata - TODO: load actual generated content
+                sections_dict = {}
+                for gen_sec in generated_sections:
+                    section_type = gen_sec["type"]
+                    # TODO: Load actual generated content from file
+                    # For now, create placeholder
+                    sections_dict[section_type] = f"[Generated content for {section_type}]"
+                
+                review_context = {
+                    "opportunity_id": notice_id,
+                    "stage": stage,
+                    "sections_generated": [s["type"] for s in generated_sections],
+                }
+                
+                review_result = run_review_loop(sections_dict, review_context)
+                result["steps"]["review"] = review_result
+                result["review_passed"] = review_result["passed"]
+                
+                if review_result["passed"]:
+                    logger.info("✅ Multi-agent review passed")
+                else:
+                    logger.warning("⚠️  Multi-agent review failed: %s", 
+                                 review_result["failed_agents"])
+                    
+            except Exception as e:
+                logger.exception("Review failed: %s", e)
+                result["steps"]["review"] = {
+                    "success": False,
+                    "error": str(e)
+                }
+                result["review_passed"] = False
+        
         # Overall success criteria:
         # - Ingestion worked
         # - At least 50% of sections generated successfully
+        # - Review passed (if enabled)
         min_success_threshold = max(1, len(sections) // 2)
         result["success"] = (
             result["steps"]["ingest"]["success"] and
-            len(generated_sections) >= min_success_threshold
+            len(generated_sections) >= min_success_threshold and
+            result["review_passed"]
         )
         
         if result["success"]:
