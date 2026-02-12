@@ -17,13 +17,36 @@ ENV/
 .env/
 
 # ============================================================================
-# DEPLOYMENT: IMPORTANT - These files ARE tracked for free hosting:
+# DEPLOYMENT STRATEGY: Build ChromaDB on server, not in git
 # ============================================================================
-# ✅ chroma_db/        - ChromaDB database (NEEDED for Render/Fly.io)
-# ✅ requirements.txt  - Python dependencies
-# ✅ rag_api_simple.py - API server code
-# ✅ Federal_Contracting/ - Source documents for RAG
+# Git repo should only contain:
+#   ✅ Python code (*.py files)
+#   ✅ requirements.txt
+#   ✅ Small config files
+# 
+# ChromaDB and documents should be:
+#   - Built on server during deployment
+#   - Or uploaded separately to persistent storage
+#   - NOT committed to git (too many files!)
 # ============================================================================
+
+# ChromaDB Database (4K+ files - TOO LARGE for git!)
+chroma_db/
+chroma_db/**/*
+*.sqlite3
+*.parquet
+*.bin
+
+# Source Documents (ALL document types - keep repo lean!)
+Federal_Contracting/
+Federal_Contracting/**/*
+**/*.pdf
+**/*.docx
+**/*.doc
+**/*.xlsx
+**/*.xls
+**/*.pptx
+**/*.ppt
 
 # Environment Variables (NEVER COMMIT!)
 .env
@@ -66,21 +89,32 @@ docs/_build/
 credentials.json
 config.json
 
-# AWS Deployment Files (generated locally)
+# AWS Deployment Files (generated locally - LARGE!)
 layers/*.zip
-layers/python
-
+layers/python/
+layers/python/**/*
+layers/**/python/
+python/
+python/**/*
 deployment/*.zip
 automation-layer*.zip
+rag-api-layer.zip
+
+# Lambda layer packages (thousands of dependency files)
+**/lib/python*/
+**/lib/python*/**
+**/site-packages/
+**/site-packages/**
 
 # Generated Documents (Lambda output - don't commit)
 draftrfi/
 draftrfp/
 drafts/
 
-# Keep source PDFs/DOCX in Federal_Contracting (needed for RAG)
-# These are important reference documents - DO commit them
-# *.pdf and *.docx in Federal_Contracting/ should be tracked
+# Data directories (too large for git)
+data/
+uploads/
+downloads/
 
 # Render.com / Deployment
 .render/
@@ -97,3 +131,17 @@ tmp/
 # Local test files
 test_*.py
 scratch/
+
+# ============================================================================
+# DEPLOYMENT NOTE:
+# ============================================================================
+# To deploy with ChromaDB on Render/Fly.io:
+#   1. Git repo stays lean (only .py files)
+#   2. Upload chroma_db/ separately to persistent disk
+#   3. Or rebuild ChromaDB on first deployment using rag_ingest.py
+#
+# For rebuilding on server:
+#   - Upload Federal_Contracting/ to persistent storage
+#   - Run: python rag_ingest.py on server
+#   - ChromaDB builds from source documents
+# ============================================================================
