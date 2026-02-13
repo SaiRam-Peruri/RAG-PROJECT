@@ -259,15 +259,14 @@ def main():
     if args.root:
         ROOT = Path(args.root)
 
-    if not os.getenv("OPENAI_API_KEY"):
-        raise SystemExit("OPENAI_API_KEY not set. Set: export OPENAI_API_KEY='...'\n")
-
+    # Use ChromaDB's default (free) embeddings instead of OpenAI
+    # This uses sentence-transformers locally - no API key needed!
+    print("Using ChromaDB default embeddings (free, local)")
+    
     client = chromadb.PersistentClient(path=args.db)
 
-    embedder = embedding_functions.OpenAIEmbeddingFunction(
-        api_key=os.environ["OPENAI_API_KEY"],
-        model_name="text-embedding-3-large",
-    )
+    # Use default embedding function (no API key required)
+    embedder = embedding_functions.DefaultEmbeddingFunction()
 
     # Clear existing collections (idempotent re-run)
     # Comment these out if you want incremental indexing later.
