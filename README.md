@@ -42,6 +42,7 @@ This system automates the end-to-end proposal development workflow:
 - [Documentation](#documentation)
 - [Project Structure](#project-structure)
 
+<a id="features"></a>
 ## ✨ Features
 
 ### Core Capabilities
@@ -60,6 +61,7 @@ This system automates the end-to-end proposal development workflow:
 - **Custom Section Configuration**: Flexible section definitions
 - **Semantic Role Analysis**: Intelligent content categorization
 
+<a id="system-architecture"></a>
 ## 🏗️ System Architecture
 
 ```
@@ -97,6 +99,7 @@ This system automates the end-to-end proposal development workflow:
 └─────────────────────────────────────────────────────────┘
 ```
 
+<a id="installation"></a>
 ## 🚀 Installation
 
 ### 📦 Prerequisites
@@ -147,6 +150,7 @@ Federal_Contracting/
 └── 03_Unsuccessful_Pursuits/
 ```
 
+<a id="quick-start"></a>
 ## 🎬 Quick Start
 
 ### 1. Ingest Documents
@@ -179,6 +183,7 @@ Automatically monitors for new RFPs and generates complete proposals.
 python compliance_matrix.py <opportunity_folder>
 ```
 
+<a id="core-modules"></a>
 ## 🔧 Core Modules
 
 ### Ingestion System
@@ -243,6 +248,7 @@ Automatically fills proposal templates using RAG-retrieved content.
 
 Iterative improvement system for refining generated content.
 
+<a id="workflow"></a>
 ## 🔄 Workflow
 
 ### 🔄 Automated Workflow (Recommended)
@@ -262,6 +268,7 @@ Iterative improvement system for refining generated content.
 5. Refine: python refinement_workflow.py
 ```
 
+<a id="configuration"></a>
 ## ⚙️ Configuration
 
 ### Document Collection Rules
@@ -280,6 +287,7 @@ Adjust in respective query files:
 - Embedding model
 - Collection weights
 
+<a id="documentation"></a>
 ## 📚 Documentation
 
 Detailed guides available:
@@ -291,6 +299,7 @@ Detailed guides available:
 - [WORKFLOW_DIAGRAM.md](WORKFLOW_DIAGRAM.md) - Visual workflows
 - [ADVANCED_TOOLS_README.md](ADVANCED_TOOLS_README.md) - Advanced features
 
+<a id="project-structure"></a>
 ## 📁 Project Structure
 
 ```
