@@ -1,4 +1,23 @@
-# RAG-Based Federal Proposal Automation System
+<div align="center">
+
+# 🧠 RAG-Based Federal Proposal Automation System
+
+### Turn a pile of RFPs and past proposals into a cited, compliance-checked draft.
+
+<p>
+<img alt="Python" src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
+<img alt="OpenAI" src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white"/>
+<img alt="ChromaDB" src="https://img.shields.io/badge/ChromaDB-FF6F00?style=for-the-badge&logo=chromatic&logoColor=white"/>
+<img alt="RAG" src="https://img.shields.io/badge/RAG-00A67E?style=for-the-badge&logo=databricks&logoColor=white"/>
+</p>
+
+<p>
+<img alt="last commit" src="https://img.shields.io/github/last-commit/SaiRam-Peruri/RAG-PROJECT?style=flat-square&color=00D4FF"/>
+<img alt="repo size" src="https://img.shields.io/github/repo-size/SaiRam-Peruri/RAG-PROJECT?style=flat-square&color=7B2CBF"/>
+<img alt="top language" src="https://img.shields.io/github/languages/top/SaiRam-Peruri/RAG-PROJECT?style=flat-square&color=00A67E"/>
+</p>
+
+</div>
 
 An intelligent Retrieval-Augmented Generation (RAG) system for automating federal government proposal generation. This system leverages AI to streamline the proposal development process by intelligently retrieving relevant content from past proposals, RFPs, and company resources.
 
@@ -34,7 +53,7 @@ This system automates the end-to-end proposal development workflow:
 - **Requirement Tracking**: Comprehensive coverage analysis
 - **Auto Service**: File system monitoring for hands-free operation
 
-### Advanced Features
+### ✨ Advanced Features
 - **Template Filling**: Automated population of proposal templates
 - **Refinement Workflow**: Iterative improvement system
 - **SAM.gov Integration**: Opportunity checking and analysis
@@ -80,12 +99,12 @@ This system automates the end-to-end proposal development workflow:
 
 ## 🚀 Installation
 
-### Prerequisites
+### 📦 Prerequisites
 - Python 3.8+
 - OpenAI API key
 - Git
 
-### Setup
+### ⚙️ Setup
 
 1. **Clone the repository**
 ```bash
@@ -219,14 +238,14 @@ Automatically fills proposal templates using RAG-retrieved content.
 - `analyze_sam_format.py`: Parses SAM.gov opportunity data
 - `check_opportunities.py`: Monitors new opportunities
 
-### Refinement Workflow
+### 🔄 Refinement Workflow
 **File**: `refinement_workflow.py`
 
 Iterative improvement system for refining generated content.
 
 ## 🔄 Workflow
 
-### Automated Workflow (Recommended)
+### 🔄 Automated Workflow (Recommended)
 ```
 1. Drop RFP in 01_Active_Pursuits/
 2. Auto-service detects and processes
@@ -234,7 +253,7 @@ Iterative improvement system for refining generated content.
 4. Review and refine as needed
 ```
 
-### Manual Workflow
+### 🔄 Manual Workflow
 ```
 1. Ingest: python rag_ingest.py
 2. Generate: python proposal_generator.py
@@ -252,7 +271,7 @@ Edit `rag_ingest.py` to customize:
 - Metadata extraction
 - Collection assignment
 
-### Section Configuration
+### 🔐 Section Configuration
 See `section_config_example.json` for custom section definitions.
 
 ### Search Parameters
@@ -381,3 +400,13 @@ For issues and questions:
 
 **Last Updated**: February 2026
 **Version**: 1.0.0
+
+---
+
+<div align="center">
+
+**Built by [Sai Ram Peruri](https://github.com/SaiRam-Peruri)** · AI Solutions Engineer · Former Cloud DevOps Engineer
+
+⭐ If this project helped you, consider starring the repo.
+
+</div>
